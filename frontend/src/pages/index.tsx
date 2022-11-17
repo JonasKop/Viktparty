@@ -13,9 +13,14 @@ import { getSession, signOut } from "next-auth/react";
 interface HomeProps {
   errorCode: number;
   weight: number;
+  grafanaStatsUrl: string;
 }
 
-function Home({ weight: defaultWeight, errorCode }: HomeProps) {
+function Home({
+  weight: defaultWeight,
+  errorCode,
+  grafanaStatsUrl,
+}: HomeProps) {
   const [weight, setWeight] = useState<string>(defaultWeight?.toString() || "");
   const [checkedIn, setCheckedIn] = useState<boolean | undefined>(
     !!defaultWeight
@@ -96,7 +101,7 @@ function Home({ weight: defaultWeight, errorCode }: HomeProps) {
           </Box>
         )}
         <Box display="grid" justifyItems="center">
-          <Link href="https://grafana.home.jonassjodin.com/">Se historik</Link>
+          <Link href={grafanaStatsUrl}>Se historik</Link>
         </Box>
       </Box>
     </Box>
@@ -122,15 +127,19 @@ const PageWrapper = (Component: any) =>
 export default PageWrapper(Home);
 
 export const getServerSideProps = withSSRAuth(async ({ req, res }: any) => {
+  const grafanaStatsUrl =
+    process.env.GRAFANA_STATISTICS_URL || "https://grafana.example.com";
+
   const token = await getSSRToken(req, res);
   const resp = await fetchTodaysWeight(token);
+
   if (resp.status === 400) {
-    return { props: { weight: null } };
+    return { props: { weight: null, grafanaStatsUrl } };
   }
-  if (resp.status >= 400) {
+  if (resp.status > 400) {
     return { props: { errorCode: resp.status } };
   }
   const jsonBody = await resp.json();
 
-  return { props: { weight: jsonBody.weight } };
+  return { props: { weight: jsonBody.weight, grafanaStatsUrl } };
 });
